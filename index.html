@@ -1,0 +1,157 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Mots Mêlés</title>
+<link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@400;600&display=swap" rel="stylesheet">
+<style>
+:root{--bg1:#fff4c9;--bg2:#ffd9ec;--card:#ffffff;--ink:#3a2a4d;--muted:#8a7a9c;--cell:#f6f1fb;--accent:#a63fe0;--accent2:#ff5fa8;
+box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg1:#2a1f3d;--bg2:#3d1f35;--card:#241a33;--ink:#f3eafc;--muted:#b3a3c7;--cell:#33274a}}
+:root[data-theme="dark"]{--bg1:#2a1f3d;--bg2:#3d1f35;--card:#241a33;--ink:#f3eafc;--muted:#b3a3c7;--cell:#33274a}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{margin:0;min-height:100%}
+body{background:linear-gradient(160deg,var(--bg1),var(--bg2)) fixed;color:var(--ink);font-family:'Fredoka',system-ui,sans-serif;display:flex;justify-content:center}
+main{width:100%;max-width:460px;padding:14px 14px 28px}
+header{display:flex;justify-content:space-between;align-items:center;margin-bottom:10px}
+h1{font-size:20px;margin:0;font-weight:600}
+.lvl{font-size:14px;color:var(--muted)}
+.theme{background:linear-gradient(90deg,var(--accent),var(--accent2));color:#fff;text-align:center;font-weight:600;font-size:20px;padding:10px;border-radius:14px;box-shadow:0 4px 0 rgba(0,0,0,.15)}
+.words{background:var(--card);border-radius:14px;padding:10px;margin:10px 0;display:flex;flex-wrap:wrap;gap:6px 14px;justify-content:center;min-height:60px}
+.w{font-size:16px;color:var(--ink);letter-spacing:.5px}
+.w.ok{text-decoration:line-through;opacity:.45}
+.w.hint{color:var(--accent2);font-weight:600}
+#grid{background:var(--card);border-radius:18px;padding:8px;display:grid;gap:3px;touch-action:none;user-select:none;-webkit-user-select:none;width:100%;aspect-ratio:1}
+.c{display:flex;align-items:center;justify-content:center;font-weight:600;font-size:clamp(16px,5.4vw,24px);border-radius:10px;background:var(--cell);transition:background .1s}
+.c.sel{background:#ffd23f;color:#3a2a4d}
+.c.f{color:#fff;text-shadow:0 1px 1px rgba(0,0,0,.25)}
+.bar{display:flex;gap:10px;margin-top:12px}
+button{font:inherit;font-weight:600;border:0;border-radius:14px;padding:12px 16px;color:#fff;background:var(--accent);box-shadow:0 4px 0 rgba(0,0,0,.18);flex:1;cursor:pointer}
+button:active{transform:translateY(2px);box-shadow:0 2px 0 rgba(0,0,0,.18)}
+button.alt{background:var(--accent2)}
+button:focus-visible{outline:3px solid var(--ink);outline-offset:2px}
+#win{position:fixed;inset:0;background:rgba(30,10,50,.6);display:none;align-items:center;justify-content:center;padding:20px}
+#win.on{display:flex}
+#win div{background:var(--card);border-radius:22px;padding:26px;text-align:center;max-width:320px;width:100%}
+#win h2{margin:0 0 6px;font-size:26px}
+#win p{margin:0 0 16px;color:var(--muted)}
+.stats{display:flex;gap:8px;margin:10px 0 0;align-items:center}.stats span{flex:1;background:var(--card);border-radius:12px;padding:6px 10px;text-align:center;font-size:15px}button.ico{flex:0 0 auto;padding:6px 12px;background:var(--card);color:var(--ink);box-shadow:0 3px 0 rgba(0,0,0,.12)}.stars{font-size:34px;margin:0 0 6px}
+</style>
+<link rel="manifest" href="manifest.webmanifest">
+<meta name="theme-color" content="#a63fe0">
+<link rel="icon" href="icon-192.png">
+</head>
+<body>
+<main>
+<header><h1>Mots Mêlés</h1><span class="lvl" id="lvl"></span></header>
+<div class="theme" id="theme"></div>
+<div class="stats"><span>⏱ <b id="time">0:00</b></span><span>⭐ <b id="score">0</b></span><button class="ico" id="snd" aria-label="Son">🔊</button></div>
+<div class="words" id="words"></div>
+<div id="grid" aria-label="Grille de lettres"></div>
+<div class="bar"><button id="hint">Indice</button><button class="alt" id="shuf">Nouvelle grille</button></div>
+</main>
+<div id="win"><div><h2>Bravo !</h2><p id="wmsg"></p><button id="next">Niveau suivant</button></div></div>
+<script>
+const LEVELS=[
+{t:"Pique-nique",n:7,w:["TARTE","PARC","LIVRE","PANIER","JARDIN","BANC"]},
+{t:"Animaux",n:7,w:["CHAT","CHIEN","LAPIN","OISEAU","POISSON","VACHE"]},
+{t:"Fruits",n:8,w:["POMME","POIRE","CERISE","FRAISE","BANANE","CITRON","RAISIN"]},
+{t:"À l'école",n:8,w:["CRAYON","CAHIER","TABLEAU","GOMME","CLASSE","MAITRE","LECON"]},
+{t:"Météo",n:8,w:["SOLEIL","PLUIE","NUAGE","ORAGE","NEIGE","VENT","BROUILLARD"]},
+{t:"Voyage",n:9,w:["AVION","TRAIN","VALISE","BILLET","HOTEL","PLAGE","MUSEE","CARTE"]},
+{t:"Cuisine",n:9,w:["FOURCHETTE","COUTEAU","CASSEROLE","ASSIETTE","RECETTE","FOUR","POELE","CUILLERE"]},
+{t:"La maison",n:8,w:["SALON","CUISINE","CHAMBRE","FENETRE","PORTE","TOIT","ESCALIER"]},
+{t:"Sports",n:8,w:["FOOTBALL","TENNIS","RUGBY","NATATION","COURSE","VELO","JUDO","BASKET"]},
+{t:"Couleurs",n:7,w:["ROUGE","BLEU","VERT","JAUNE","ROSE","NOIR","VIOLET"]},
+{t:"Métiers",n:9,w:["BOULANGER","MEDECIN","POMPIER","PILOTE","FACTEUR","DANSEUR","CUISINIER"]},
+{t:"Nature",n:10,w:["MONTAGNE","RIVIERE","FORET","OCEAN","DESERT","VOLCAN","PRAIRIE","CASCADE"]}
+];
+const COLORS=["#a63fe0","#ff5fa8","#2bb673","#ff8a2b","#2aa7e0","#e0463f","#7a5cff","#e0a800"];
+const DIRS=[[0,1],[1,0],[1,1],[-1,1],[0,-1],[-1,0],[-1,-1],[1,-1]];
+let hints=0,secs=0,tm=null,total=0,snd=true,ac=null;
+let level=0,N,cells=[],grid=[],words=[],found=new Set(),start=null,path=[];
+try{level=Math.min(+localStorage.getItem('mm_lvl')||0,LEVELS.length-1)}catch(e){}
+const $=id=>document.getElementById(id);
+function build(){
+ const L=LEVELS[level];N=L.n;words=L.w.slice();
+ let ok=false,tries=0;
+ while(!ok&&tries++<50){grid=Array.from({length:N},()=>Array(N).fill(''));ok=true;
+  for(const w of [...words].sort((a,b)=>b.length-a.length)){if(!place(w)){ok=false;break}}}
+ const A="ABCDEFGHIJLMNOPRSTUV";
+ for(let r=0;r<N;r++)for(let c=0;c<N;c++)if(!grid[r][c])grid[r][c]=A[Math.floor(Math.random()*A.length)];
+ found=new Set();hints=0;secs=0;clearInterval(tm);tm=setInterval(tick,1000);upd();render();
+}
+function tick(){secs++;upd()}
+function upd(){$('time').textContent=Math.floor(secs/60)+':'+String(secs%60).padStart(2,'0');$('score').textContent=Math.max(0,total+found.size*10-hints*5)}
+function beep(f,d){if(!snd)return;try{ac=ac||new (window.AudioContext||window.webkitAudioContext)();const o=ac.createOscillator(),g=ac.createGain();o.type='triangle';o.frequency.value=f;g.gain.setValueAtTime(.15,ac.currentTime);g.gain.exponentialRampToValueAtTime(.001,ac.currentTime+(d||.18));o.connect(g);g.connect(ac.destination);o.start();o.stop(ac.currentTime+(d||.18))}catch(e){}}
+function place(w){
+ for(let k=0;k<200;k++){
+  const d=DIRS[Math.floor(Math.random()*8)],r=Math.floor(Math.random()*N),c=Math.floor(Math.random()*N);
+  const er=r+d[0]*(w.length-1),ec=c+d[1]*(w.length-1);
+  if(er<0||er>=N||ec<0||ec>=N)continue;
+  let good=true;
+  for(let i=0;i<w.length;i++){const g=grid[r+d[0]*i][c+d[1]*i];if(g&&g!==w[i]){good=false;break}}
+  if(!good)continue;
+  for(let i=0;i<w.length;i++)grid[r+d[0]*i][c+d[1]*i]=w[i];
+  return true;
+ }
+ return false;
+}
+function render(){
+ $('lvl').textContent="Niveau "+(level+1)+"/"+LEVELS.length;
+ $('theme').textContent=LEVELS[level].t;
+ const g=$('grid');g.innerHTML='';g.style.gridTemplateColumns="repeat("+N+",1fr)";cells=[];
+ for(let r=0;r<N;r++){cells.push([]);for(let c=0;c<N;c++){const d=document.createElement('div');d.className='c';d.textContent=grid[r][c];d.dataset.r=r;d.dataset.c=c;g.appendChild(d);cells[r].push(d)}}
+ $('words').innerHTML=words.map(w=>'<span class="w" id="w_'+w+'">'+w+'</span>').join('');
+}
+function cellAt(x,y){const e=document.elementFromPoint(x,y);return e&&e.classList.contains('c')?[+e.dataset.r,+e.dataset.c]:null}
+function line(a,b){
+ const dr=b[0]-a[0],dc=b[1]-a[1],n=Math.max(Math.abs(dr),Math.abs(dc));
+ if(!(dr===0||dc===0||Math.abs(dr)===Math.abs(dc)))return [a];
+ const out=[];for(let i=0;i<=n;i++)out.push([a[0]+Math.sign(dr)*i,a[1]+Math.sign(dc)*i]);return out;
+}
+function paint(){
+ document.querySelectorAll('.c.sel').forEach(e=>e.classList.remove('sel'));
+ path.forEach(p=>cells[p[0]][p[1]].classList.add('sel'));
+}
+const g=$('grid');
+g.addEventListener('pointerdown',e=>{const c=cellAt(e.clientX,e.clientY);if(!c)return;start=c;path=[c];paint();g.setPointerCapture(e.pointerId)});
+g.addEventListener('pointermove',e=>{if(!start)return;const c=cellAt(e.clientX,e.clientY);if(!c)return;path=line(start,c);paint()});
+function end(){
+ if(!start)return;
+ const s=path.map(p=>grid[p[0]][p[1]]).join(''),rs=[...s].reverse().join('');
+ const w=words.find(x=>!found.has(x)&&(x===s||x===rs));
+ if(w&&path.length>1){mark(w,path)}else if(path.length>1){beep(180,.1)}
+ start=null;path=[];paint();
+}
+g.addEventListener('pointerup',end);g.addEventListener('pointercancel',end);
+function mark(w,p){
+ found.add(w);beep(520+found.size*70);upd();const col=COLORS[found.size%COLORS.length];
+ p.forEach(q=>{const e=cells[q[0]][q[1]];e.classList.add('f');e.style.background=col});
+ const el=$('w_'+w);el.classList.add('ok');el.classList.remove('hint');
+ if(found.size===words.length)setTimeout(win,350);
+}
+function win(){
+ const last=level===LEVELS.length-1;
+ clearInterval(tm);const bonus=Math.max(0,60-secs),pts=Math.max(0,found.size*10-hints*5+bonus);total+=pts;upd();const st=secs<=words.length*8?3:secs<=words.length*15?2:1;[523,659,784].forEach((f,i)=>setTimeout(()=>beep(f,.25),i*150));
+ $('wmsg').innerHTML='<div class="stars">'+'⭐'.repeat(st)+'</div>Temps : '+$('time').textContent+' · +'+pts+' points'+(last?'<br>Tu as terminé tous les niveaux !':'');
+ $('next').textContent=last?"Rejouer depuis le début":"Niveau suivant";
+ $('win').classList.add('on');
+}
+$('next').onclick=()=>{$('win').classList.remove('on');level=(level+1)%LEVELS.length;try{localStorage.setItem('mm_lvl',level)}catch(e){}build()};
+$('shuf').onclick=build;
+$('snd').onclick=()=>{snd=!snd;$('snd').textContent=snd?'🔊':'🔇'};
+$('hint').onclick=()=>{
+ const w=words.find(x=>!found.has(x));if(!w)return;hints++;upd();
+ document.querySelectorAll('.w.hint').forEach(e=>e.classList.remove('hint'));
+ $('w_'+w).classList.add('hint');
+ for(let r=0;r<N;r++)for(let c=0;c<N;c++)if(grid[r][c]===w[0]&&!cells[r][c].classList.contains('f')){
+  for(const d of DIRS){let ok=true;for(let i=0;i<w.length;i++){const rr=r+d[0]*i,cc=c+d[1]*i;if(rr<0||rr>=N||cc<0||cc>=N||grid[rr][cc]!==w[i]){ok=false;break}}
+   if(ok){cells[r][c].classList.add('sel');setTimeout(()=>cells[r][c].classList.remove('sel'),1500);return}}}
+};
+build();
+</script>
+<script>if("serviceWorker" in navigator)navigator.serviceWorker.register("sw.js").catch(function(){});</script>
+</body>
+</html>
